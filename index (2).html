@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>🎱 경품 추첨 이벤트</title>
+<style>
+/* ─── 변수 ─────────────────────────────────── */
+:root{
+  --bg:#0d1b2a;
+  --bg2:#112240;
+  --panel:#162b46;
+  --gold:#f4c430;
+  --gold2:#e8a800;
+  --white:#f0f4ff;
+  --dim:#7a92b0;
+
+  /* 공 색상 – 상품 4종 */
+  --c0:#ff5c5c; /* 고꼬키링    */
+  --c1:#4cc9f0; /* 다이버파우치 */
+  --c2:#ffd93d; /* 링링 바인더링 */
+  --c3:#6bcb77; /* 달팽이커터  */
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  font-family:'Segoe UI','Apple SD Gothic Neo',sans-serif;
+  background:var(--bg);
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  color:var(--white);
+  overflow-x:hidden;
+}
+
+/* ─── 헤더 ─────────────────────────────────── */
+header{
+  width:100%;
+  text-align:center;
+  padding:32px 16px 0;
+}
+.hdr-badge{
+  display:inline-block;
+  font-size:.75rem;
+  font-weight:700;
+  letter-spacing:2px;
+  color:var(--gold);
+  border:1.5px solid var(--gold2);
+  padding:3px 12px;
+  border-radius:20px;
+  margin-bottom:10px;
+  text-transform:uppercase;
+}
+.hdr-title{
+  font-size:clamp(1.7rem,5vw,2.8rem);
+  font-weight:900;
+  letter-spacing:-1.5px;
+  line-height:1.15;
+}
+.hdr-title em{
+  font-style:normal;
+  color:var(--gold);
+}
+.hdr-sub{
+  margin-top:8px;
+  color:var(--dim);
+  font-size:.9rem;
+}
+
+/* ─── 메인 레이아웃 ─────────────────────────── */
+.main{
+  width:min(620px,96vw);
+  margin:28px auto 0;
+}
+
+/* ─── 추첨 머신 ─────────────────────────────── */
+.machine{
+  background:var(--panel);
+  border-radius:28px;
+  padding:24px 20px 20px;
+  position:relative;
+  box-shadow:0 0 0 1.5px rgba(244,196,48,.18),
+             0 20px 60px rgba(0,0,0,.5);
+}
+
+/* 타이틀 바 */
+.machine-bar{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:16px;
+}
+.machine-dot{width:10px;height:10px;border-radius:50%}
+.machine-label{
+  font-size:.78rem;
+  font-weight:700;
+  letter-spacing:2px;
+  color:var(--dim);
+  text-transform:uppercase;
+  margin-left:4px;
+}
+
+/* 추첨통 캔버스 */
+.drum-wrap{
+  position:relative;
+  border-radius:20px;
+  overflow:hidden;
+  background:linear-gradient(160deg,#0a1628 0%,#0d2040 100%);
+  border:1.5px solid rgba(244,196,48,.15);
+}
+#drumCanvas{
+  display:block;
+  width:100%;
+  height:auto;
+}
+
+/* 출구 슬롯 레이블 */
+.slot-label{
+  position:absolute;
+  bottom:14px;
+  right:18px;
+  font-size:.65rem;
+  font-weight:700;
+  letter-spacing:1.5px;
+  color:rgba(244,196,48,.6);
+  text-transform:uppercase;
+}
+
+/* 결과 공 트레이 */
+.tray-wrap{
+  margin-top:14px;
+  background:rgba(0,0,0,.25);
+  border-radius:14px;
+  padding:14px 16px;
+  min-height:70px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.tray-label{
+  font-size:.7rem;
+  font-weight:700;
+  letter-spacing:1.5px;
+  color:var(--dim);
+  text-transform:uppercase;
+  margin-right:4px;
+  white-space:nowrap;
+}
+
+/* 결과 공 아이템 */
+.result-ball{
+  width:52px;height:52px;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.58rem;
+  font-weight:800;
+  color:#fff;
+  line-height:1.2;
+  text-align:center;
+  padding:4px;
+  box-shadow:0 4px 16px rgba(0,0,0,.4),inset 0 -4px 8px rgba(0,0,0,.2),inset 0 4px 8px rgba(255,255,255,.25);
+  flex-shrink:0;
+  animation:ballDrop .4s cubic-bezier(.175,.885,.32,1.275) both;
+  word-break:keep-all;
+}
+@keyframes ballDrop{
+  from{transform:scale(0) translateY(-20px);opacity:0}
+  to  {transform:scale(1) translateY(0);opacity:1}
+}
+
+/* 결과 공 색상 */
+.ball-0{background:radial-gradient(circle at 35% 35%,#ff8a8a,var(--c0))}
+.ball-1{background:radial-gradient(circle at 35% 35%,#7fd9f5,var(--c1));color:#0d1b2a}
+.ball-2{background:radial-gradient(circle at 35% 35%,#ffe97a,var(--c2));color:#0d1b2a}
+.ball-3{background:radial-gradient(circle at 35% 35%,#8de099,var(--c3));color:#0d1b2a}
+
+/* ─── START 버튼 ─────────────────────────────── */
+.btn-spin{
+  display:block;
+  width:100%;
+  margin-top:16px;
+  padding:15px;
+  font-size:1.1rem;
+  font-weight:900;
+  letter-spacing:1px;
+  color:var(--bg);
+  background:linear-gradient(135deg,var(--gold) 0%,var(--gold2) 100%);
+  border:none;
+  border-radius:14px;
+  cursor:pointer;
+  box-shadow:0 6px 24px rgba(244,196,48,.35);
+  transition:transform .15s,box-shadow .15s,opacity .15s;
+}
+.btn-spin:hover:not(:disabled){
+  transform:translateY(-2px);
+  box-shadow:0 10px 32px rgba(244,196,48,.45);
+}
+.btn-spin:active:not(:disabled){transform:scale(.98)}
+.btn-spin:disabled{opacity:.4;cursor:not-allowed}
+
+/* ─── 확률 안내 ─────────────────────────────── */
+.prob-section{
+  background:var(--panel);
+  border-radius:20px;
+  padding:18px 20px;
+  margin:16px 0 40px;
+  box-shadow:0 0 0 1.5px rgba(244,196,48,.1);
+}
+.prob-hdr{
+  font-size:.72rem;
+  font-weight:700;
+  letter-spacing:2px;
+  color:var(--dim);
+  text-transform:uppercase;
+  margin-bottom:14px;
+}
+.prob-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+  font-size:.85rem;
+}
+.prob-row:last-child{margin-bottom:0}
+.prob-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.prob-name{flex:0 0 auto;min-width:90px;font-weight:700;color:var(--white)}
+.prob-track{flex:1;height:8px;background:rgba(255,255,255,.08);border-radius:8px;overflow:hidden}
+.prob-fill{height:100%;border-radius:8px}
+.prob-pct{min-width:44px;text-align:right;font-weight:700;color:var(--dim)}
+
+/* ─── 결과 팝업 ─────────────────────────────── */
+.overlay{
+  display:none;
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.65);
+  z-index:200;
+  align-items:center;justify-content:center;
+  backdrop-filter:blur(6px);
+}
+.overlay.show{display:flex}
+
+.popup{
+  background:var(--panel);
+  border:1.5px solid rgba(244,196,48,.3);
+  border-radius:28px;
+  padding:40px 32px 28px;
+  text-align:center;
+  max-width:360px;width:92%;
+  box-shadow:0 0 80px rgba(244,196,48,.15),0 24px 64px rgba(0,0,0,.6);
+  animation:popIn .45s cubic-bezier(.175,.885,.32,1.275) both;
+}
+@keyframes popIn{
+  from{transform:scale(.6);opacity:0}
+  to  {transform:scale(1);opacity:1}
+}
+
+/* 팝업 안 큰 공 */
+.popup-bigball{
+  width:96px;height:96px;
+  border-radius:50%;
+  margin:0 auto 18px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1rem;font-weight:900;
+  line-height:1.25;text-align:center;
+  padding:10px;
+  box-shadow:0 8px 32px rgba(0,0,0,.4),inset 0 -6px 12px rgba(0,0,0,.2),inset 0 6px 12px rgba(255,255,255,.25);
+  animation:ballSpin .6s ease both;
+  word-break:keep-all;
+}
+@keyframes ballSpin{
+  from{transform:scale(0) rotate(-180deg);opacity:0}
+  to  {transform:scale(1) rotate(0deg);opacity:1}
+}
+
+.popup-sub{font-size:.8rem;color:var(--dim);margin-bottom:6px}
+.popup-title{
+  font-size:clamp(1.3rem,4vw,1.7rem);
+  font-weight:900;
+  color:var(--white);
+  margin-bottom:6px;
+}
+.popup-title span{color:var(--gold)}
+.popup-congrats{
+  font-size:.85rem;color:var(--dim);margin-bottom:28px;
+}
+
+.btn-retry{
+  display:block;width:100%;
+  padding:13px;
+  font-size:.95rem;font-weight:800;
+  color:var(--bg);
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  border:none;border-radius:12px;cursor:pointer;
+  box-shadow:0 4px 16px rgba(244,196,48,.3);
+  margin-bottom:8px;
+  transition:transform .15s;
+}
+.btn-retry:hover{transform:translateY(-2px)}
+
+.btn-close{
+  display:block;width:100%;padding:12px;
+  font-size:.85rem;font-weight:700;
+  color:var(--dim);
+  background:rgba(255,255,255,.06);
+  border:none;border-radius:12px;cursor:pointer;
+  transition:background .15s;
+}
+.btn-close:hover{background:rgba(255,255,255,.1)}
+
+/* ─── 폭죽 캔버스 ───────────────────────────── */
+#confettiCanvas{
+  position:fixed;inset:0;
+  pointer-events:none;
+  z-index:199;
+}
+
+/* ─── 반응형 ─────────────────────────────────── */
+@media(max-width:440px){
+  .result-ball{width:44px;height:44px;font-size:.52rem}
+  .popup{padding:30px 20px 22px}
+}
+</style>
+</head>
+<body>
+
+<canvas id="confettiCanvas"></canvas>
+
+<!-- 헤더 -->
+<header>
+  <div class="hdr-badge">🎱 Lucky Draw</div>
+  <h1 class="hdr-title">행운의 <em>경품 추첨</em></h1>
+  <p class="hdr-sub">공이 통 안에서 섞이다가 한 개가 나옵니다!</p>
+</header>
+
+<div class="main">
+
+  <!-- 추첨 머신 -->
+  <div class="machine">
+    <div class="machine-bar">
+      <div class="machine-dot" style="background:#ff5f57"></div>
+      <div class="machine-dot" style="background:#febc2e"></div>
+      <div class="machine-dot" style="background:#28c840"></div>
+      <span class="machine-label">경품 추첨기</span>
+    </div>
+
+    <div class="drum-wrap">
+      <canvas id="drumCanvas"></canvas>
+      <div class="slot-label">▶ EXIT SLOT</div>
+    </div>
+
+    <!-- 결과 공 트레이 -->
+    <div class="tray-wrap" id="tray">
+      <span class="tray-label">결과</span>
+      <!-- 결과 공이 여기 추가됩니다 -->
+    </div>
+
+    <button class="btn-spin" id="btnSpin">🎱 추첨 시작</button>
+  </div>
+
+  <!-- 확률 안내 -->
+  <div class="prob-section">
+    <div class="prob-hdr">경품별 당첨 확률</div>
+    <div id="probRows"></div>
+  </div>
+
+</div>
+
+<!-- 결과 팝업 -->
+<div class="overlay" id="overlay">
+  <div class="popup">
+    <div class="popup-bigball" id="popupBall"></div>
+    <div class="popup-sub">당첨 경품</div>
+    <div class="popup-title"><span id="popupName">—</span></div>
+    <div class="popup-congrats">🎉 축하합니다! 당첨되셨습니다!</div>
+    <button class="btn-retry" id="btnRetry">🔄 다시 추첨하기</button>
+    <button class="btn-close" id="btnClose">닫기</button>
+  </div>
+</div>
+
+<script>
+/* =============================================
+   경품 데이터
+============================================= */
+const PRIZES = [
+  { name:'고꼬키링',     weight:10, cls:'ball-0', rgb:'#ff5c5c', textDark:false },
+  { name:'다이버파우치', weight:30, cls:'ball-1', rgb:'#4cc9f0', textDark:true  },
+  { name:'링링 바인더링',weight:20, cls:'ball-2', rgb:'#ffd93d', textDark:true  },
+  { name:'달팽이커터',   weight:10, cls:'ball-3', rgb:'#6bcb77', textDark:true  },
+];
+const TOTAL_W = PRIZES.reduce((s,p)=>s+p.weight,0); // 70
+
+/* 확률 기반 당첨 결정 */
+function pickPrize(){
+  const r = Math.random()*TOTAL_W;
+  let c=0;
+  for(let i=0;i<PRIZES.length;i++){c+=PRIZES[i].weight;if(r<c)return i;}
+  return PRIZES.length-1;
+}
+
+/* =============================================
+   확률 안내 렌더
+============================================= */
+(function(){
+  const wrap = document.getElementById('probRows');
+  PRIZES.forEach((p,i)=>{
+    const pct = (p.weight/TOTAL_W*100).toFixed(2);
+    wrap.innerHTML+=`
+      <div class="prob-row">
+        <div class="prob-dot" style="background:${p.rgb}"></div>
+        <div class="prob-name">${p.name}</div>
+        <div class="prob-track"><div class="prob-fill" style="width:${pct}%;background:${p.rgb}"></div></div>
+        <div class="prob-pct">${pct}%</div>
+      </div>`;
+  });
+})();
+
+/* =============================================
+   드럼 머신 캔버스
+   - 공들이 통 안에서 물리적으로 튀어다님
+   - 추첨 시 당첨 공이 오른쪽 슬롯으로 빠져나감
+============================================= */
+const canvas = document.getElementById('drumCanvas');
+const ctx    = canvas.getContext('2d');
+
+/* 캔버스 크기 */
+let W, H, CX, CY, DRUM_R, SLOT_X, SLOT_Y, SLOT_W, SLOT_H;
+
+function resize(){
+  const parent = canvas.parentElement;
+  W = parent.clientWidth;
+  H = Math.round(W * 0.56);          // 16:9 비율
+  canvas.width=W; canvas.height=H;
+  CX=W/2; CY=H/2;
+  DRUM_R = Math.min(W,H)*0.38;       // 통 반지름
+  /* 출구 슬롯 – 통 오른쪽 벽에 붙여서 */
+  SLOT_X = CX + DRUM_R - 2;
+  SLOT_Y = CY - BALL_R*2.2;
+  SLOT_W = W - SLOT_X - 6;
+  SLOT_H = BALL_R*4.4;
+}
+
+/* ── 공 설정 ── */
+const BALL_R = 18;     // 공 반지름(px) – resize 전에 설정
+const BALL_COUNT = 28; // 통 안 공 총 개수
+
+/* 각 공에 상품 인덱스 부여 (weight 비율대로) */
+function buildBallPool(){
+  const pool=[];
+  PRIZES.forEach((p,pi)=>{
+    const n = Math.round(p.weight/TOTAL_W*BALL_COUNT);
+    for(let k=0;k<n;k++) pool.push(pi);
+  });
+  // 개수 보정
+  while(pool.length<BALL_COUNT) pool.push(0);
+  pool.length=BALL_COUNT;
+  return pool;
+}
+
+let balls=[];
+
+function initBalls(){
+  const pool = buildBallPool();
+  // Fisher-Yates 셔플
+  for(let i=pool.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [pool[i],pool[j]]=[pool[j],pool[i]];
+  }
+  balls = pool.map(pi=>({
+    pi,                                  // 상품 인덱스
+    x: CX+(Math.random()-.5)*DRUM_R*.6,
+    y: CY+(Math.random()-.5)*DRUM_R*.6,
+    vx:(Math.random()-.5)*4,
+    vy:(Math.random()-.5)*4,
+    angle: Math.random()*Math.PI*2,
+    spin: (Math.random()-.5)*.1,
+    exiting:false,  // 슬롯으로 빠져나가는 중
+    opacity:1,
+  }));
+}
+
+/* ── 물리 업데이트 ── */
+let drumRotSpeed = 0; // 통 자체가 살짝 돌아가는 느낌 (시각적)
+const GRAVITY = 0.15;
+const FRICTION = 0.985;
+const DRUM_BOUNCINESS = 0.7;
+
+function updateBalls(shaking){
+  const speedBoost = shaking ? 1.6 : 1;
+
+  balls.forEach(b=>{
+    if(b.exiting) return; // 퇴장 공은 별도 처리
+
+    /* 흔들림 시 약한 외력 적용 */
+    if(shaking){
+      b.vx += (Math.random()-.5)*0.8;
+      b.vy += (Math.random()-.5)*0.8 + GRAVITY*0.3;
+    } else {
+      b.vy += GRAVITY*0.4; // 약한 중력 (통 안)
+    }
+
+    b.vx *= FRICTION;
+    b.vy *= FRICTION;
+
+    b.x += b.vx * speedBoost;
+    b.y += b.vy * speedBoost;
+    b.angle += b.spin;
+
+    /* 통 벽 충돌 – 원형 경계 */
+    const dx=b.x-CX, dy=b.y-CY;
+    const dist=Math.hypot(dx,dy);
+    const maxDist=DRUM_R-BALL_R;
+    if(dist>maxDist){
+      const nx=dx/dist, ny=dy/dist;
+      b.x=CX+nx*maxDist;
+      b.y=CY+ny*maxDist;
+      const dot=b.vx*nx+b.vy*ny;
+      b.vx=(b.vx-2*dot*nx)*DRUM_BOUNCINESS;
+      b.vy=(b.vy-2*dot*ny)*DRUM_BOUNCINESS;
+    }
+  });
+
+  /* 공끼리 충돌 (간략 버전) */
+  for(let i=0;i<balls.length;i++){
+    for(let j=i+1;j<balls.length;j++){
+      const a=balls[i], b=balls[j];
+      if(a.exiting||b.exiting) continue;
+      const dx=b.x-a.x, dy=b.y-a.y;
+      const d=Math.hypot(dx,dy);
+      if(d<BALL_R*2 && d>0){
+        const nx=dx/d, ny=dy/d;
+        const overlap=(BALL_R*2-d)/2;
+        a.x-=nx*overlap; a.y-=ny*overlap;
+        b.x+=nx*overlap; b.y+=ny*overlap;
+        const relVx=a.vx-b.vx, relVy=a.vy-b.vy;
+        const imp=(relVx*nx+relVy*ny)*0.6;
+        a.vx-=imp*nx; a.vy-=imp*ny;
+        b.vx+=imp*nx; b.vy+=imp*ny;
+      }
+    }
+  }
+}
+
+/* ── 그리기 ── */
+function drawScene(){
+  ctx.clearRect(0,0,W,H);
+
+  /* 배경 그라데이션 */
+  const bg=ctx.createRadialGradient(CX,CY,10,CX,CY,W*.7);
+  bg.addColorStop(0,'#0d2040');
+  bg.addColorStop(1,'#060f1e');
+  ctx.fillStyle=bg;
+  ctx.fillRect(0,0,W,H);
+
+  /* ── 통 외곽 광택 링 ── */
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(CX,CY,DRUM_R+6,0,Math.PI*2);
+  const ringGrad=ctx.createLinearGradient(CX-DRUM_R,CY-DRUM_R,CX+DRUM_R,CY+DRUM_R);
+  ringGrad.addColorStop(0,'rgba(244,196,48,.45)');
+  ringGrad.addColorStop(.5,'rgba(244,196,48,.08)');
+  ringGrad.addColorStop(1,'rgba(244,196,48,.35)');
+  ctx.strokeStyle=ringGrad;
+  ctx.lineWidth=5;
+  ctx.stroke();
+  ctx.restore();
+
+  /* ── 통 내부 클리핑 ── */
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(CX,CY,DRUM_R,0,Math.PI*2);
+  ctx.clip();
+
+  /* 통 내부 색 */
+  const inner=ctx.createRadialGradient(CX-DRUM_R*.2,CY-DRUM_R*.2,0,CX,CY,DRUM_R);
+  inner.addColorStop(0,'#0a1628');
+  inner.addColorStop(1,'#050d1a');
+  ctx.fillStyle=inner;
+  ctx.fillRect(0,0,W,H);
+
+  /* 격자 무늬 장식 */
+  ctx.strokeStyle='rgba(255,255,255,.03)';
+  ctx.lineWidth=1;
+  for(let gx=0;gx<W;gx+=28){
+    ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke();
+  }
+  for(let gy=0;gy<H;gy+=28){
+    ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke();
+  }
+
+  /* 공들 그리기 */
+  balls.forEach(b=>{
+    if(b.opacity<=0) return;
+    ctx.save();
+    ctx.globalAlpha=b.opacity;
+    drawBall(b.x,b.y,b.pi,b.angle,b.exiting?b.opacity:1);
+    ctx.restore();
+  });
+
+  ctx.restore(); // clip 해제
+
+  /* ── 슬롯(출구) 표시 ── */
+  drawSlot();
+
+  /* ── 통 테두리 앞면 하이라이트 ── */
+  const shine=ctx.createLinearGradient(CX-DRUM_R,CY-DRUM_R,CX+DRUM_R*0.3,CY+DRUM_R*0.3);
+  shine.addColorStop(0,'rgba(255,255,255,.06)');
+  shine.addColorStop(.5,'rgba(255,255,255,0)');
+  ctx.beginPath();
+  ctx.arc(CX,CY,DRUM_R,0,Math.PI*2);
+  ctx.fillStyle=shine;
+  ctx.fill();
+}
+
+/* 개별 공 그리기 */
+function drawBall(x,y,pi,angle,alpha){
+  const p=PRIZES[pi];
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.rotate(angle);
+
+  /* 공 그림자 */
+  ctx.shadowColor='rgba(0,0,0,.4)';
+  ctx.shadowBlur=8;
+  ctx.shadowOffsetY=3;
+
+  /* 공 본체 */
+  const grad=ctx.createRadialGradient(-BALL_R*.3,-BALL_R*.35,0,0,0,BALL_R);
+  grad.addColorStop(0,lighten(p.rgb,.45));
+  grad.addColorStop(.6,p.rgb);
+  grad.addColorStop(1,darken(p.rgb,.3));
+  ctx.beginPath();
+  ctx.arc(0,0,BALL_R,0,Math.PI*2);
+  ctx.fillStyle=grad;
+  ctx.fill();
+
+  /* 하이라이트 */
+  ctx.shadowColor='transparent';
+  const hl=ctx.createRadialGradient(-BALL_R*.28,-BALL_R*.35,0,-BALL_R*.2,-BALL_R*.3,BALL_R*.55);
+  hl.addColorStop(0,'rgba(255,255,255,.65)');
+  hl.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.beginPath();
+  ctx.arc(0,0,BALL_R,0,Math.PI*2);
+  ctx.fillStyle=hl;
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/* 슬롯 (출구 터널) */
+function drawSlot(){
+  /* 슬롯 배경 */
+  ctx.save();
+  ctx.fillStyle='rgba(0,0,0,.55)';
+  ctx.beginPath();
+  ctx.roundRect(SLOT_X, SLOT_Y, SLOT_W, SLOT_H, 6);
+  ctx.fill();
+
+  /* 슬롯 외곽 */
+  ctx.strokeStyle='rgba(244,196,48,.3)';
+  ctx.lineWidth=1.5;
+  ctx.stroke();
+
+  /* 화살표 */
+  ctx.fillStyle='rgba(244,196,48,.4)';
+  ctx.font=`bold ${Math.round(BALL_R*.9)}px sans-serif`;
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.fillText('▶', SLOT_X+SLOT_W/2, SLOT_Y+SLOT_H/2);
+  ctx.restore();
+}
+
+/* 색상 유틸 */
+function hexToRgb(hex){
+  const r=parseInt(hex.slice(1,3),16);
+  const g=parseInt(hex.slice(3,5),16);
+  const b=parseInt(hex.slice(5,7),16);
+  return [r,g,b];
+}
+function lighten(hex,amt){
+  const [r,g,b]=hexToRgb(hex);
+  return `rgb(${Math.min(255,r+255*amt)},${Math.min(255,g+255*amt)},${Math.min(255,b+255*amt)})`;
+}
+function darken(hex,amt){
+  const [r,g,b]=hexToRgb(hex);
+  return `rgb(${Math.max(0,r-255*amt)},${Math.max(0,g-255*amt)},${Math.max(0,b-255*amt)})`;
+}
+
+/* =============================================
+   애니메이션 루프
+============================================= */
+let phase='idle';     // idle | shaking | exiting | done
+let phaseTimer=0;
+let exitBall=null;    // 빠져나가는 공 정보
+let exitProgress=0;   // 0~1
+let winPrizeIdx=-1;
+let rafId=null;
+
+let lastTime=0;
+
+function loop(ts){
+  const dt=ts-lastTime; lastTime=ts;
+
+  if(phase==='shaking'){
+    phaseTimer+=dt;
+    updateBalls(true);
+
+    /* 3초 흔들고 당첨 공 선택 */
+    if(phaseTimer>3000){
+      phase='exiting';
+      phaseTimer=0;
+      launchExitBall();
+    }
+
+  } else if(phase==='exiting'){
+    phaseTimer+=dt;
+    updateBalls(false); // 나머지 공은 서서히 멈춤
+    animateExit(dt);
+
+  } else {
+    /* idle – 공이 천천히 떠다님 */
+    updateBalls(false);
+  }
+
+  drawScene();
+  rafId=requestAnimationFrame(loop);
+}
+
+/* ─── 당첨 공 슬롯으로 발사 ─── */
+function launchExitBall(){
+  /* 확률로 당첨 결정 */
+  winPrizeIdx = pickPrize();
+
+  /* 통 안에서 해당 상품 공 하나 찾기 */
+  const candidates = balls.filter(b=>b.pi===winPrizeIdx && !b.exiting);
+  if(!candidates.length){ winPrizeIdx=pickPrize(); return launchExitBall(); }
+  exitBall = candidates[Math.floor(Math.random()*candidates.length)];
+  exitBall.exiting=true;
+  exitProgress=0;
+}
+
+function animateExit(dt){
+  if(!exitBall) return;
+  exitProgress = Math.min(1, exitProgress + dt/900); // 0.9초로 슬롯 통과
+
+  /* 슬롯 중앙 목표점 */
+  const targetX = SLOT_X + SLOT_W/2;
+  const targetY = SLOT_Y + SLOT_H/2;
+
+  /* ease-in-out 보간 */
+  const t = easeInOut(exitProgress);
+  exitBall.x = lerp(exitBall.x, targetX, Math.min(1, dt/400));
+  exitBall.y = lerp(exitBall.y, targetY, Math.min(1, dt/400));
+  exitBall.vx=0; exitBall.vy=0;
+
+  /* 슬롯 끝에 도달하면 공 페이드아웃 + 팝업 */
+  if(exitProgress>=1){
+    exitBall.opacity=0;
+    phase='done';
+    setTimeout(()=>showResult(PRIZES[winPrizeIdx], winPrizeIdx), 300);
+    addResultBall(winPrizeIdx);
+  }
+}
+
+function lerp(a,b,t){return a+(b-a)*t}
+function easeInOut(t){return t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2}
+
+/* =============================================
+   결과 공 트레이에 추가
+============================================= */
+function addResultBall(pi){
+  const p=PRIZES[pi];
+  const tray=document.getElementById('tray');
+  const ball=document.createElement('div');
+  ball.className=`result-ball ${p.cls}`;
+  ball.style.color = p.textDark ? '#0d1b2a' : '#fff';
+  ball.textContent = p.name;
+  tray.appendChild(ball);
+}
+
+/* =============================================
+   결과 팝업
+============================================= */
+function showResult(prize, pi){
+  const pb=document.getElementById('popupBall');
+  pb.className=`popup-bigball ${prize.cls}`;
+  pb.style.color = prize.textDark ? '#0d1b2a' : '#fff';
+  pb.textContent = prize.name;
+  document.getElementById('popupName').textContent = prize.name;
+  document.getElementById('overlay').classList.add('show');
+  launchConfetti();
+}
+
+function closePopup(){
+  document.getElementById('overlay').classList.remove('show');
+  stopConfetti();
+  document.getElementById('btnSpin').disabled=false;
+}
+
+document.getElementById('btnRetry').onclick=()=>{
+  closePopup();
+  resetAndSpin();
+};
+document.getElementById('btnClose').onclick=closePopup;
+document.getElementById('overlay').onclick=e=>{
+  if(e.target===document.getElementById('overlay')) closePopup();
+};
+
+/* =============================================
+   추첨 시작/리셋
+============================================= */
+const btnSpin=document.getElementById('btnSpin');
+
+btnSpin.onclick=()=>{
+  if(phase==='shaking'||phase==='exiting') return;
+  resetAndSpin();
+};
+
+function resetAndSpin(){
+  /* 트레이 비우기 (label 제외) */
+  const tray=document.getElementById('tray');
+  [...tray.querySelectorAll('.result-ball')].forEach(el=>el.remove());
+
+  initBalls();
+  phase='shaking';
+  phaseTimer=0;
+  exitBall=null;
+  exitProgress=0;
+  winPrizeIdx=-1;
+  btnSpin.disabled=true;
+}
+
+/* =============================================
+   폭죽 파티클
+============================================= */
+const cc=document.getElementById('confettiCanvas');
+const cctx=cc.getContext('2d');
+let cparts=[], craf=null, crunning=false;
+const CCOLORS=['#f4c430','#ff5c5c','#4cc9f0','#ffd93d','#6bcb77','#c77dff','#ff9f43'];
+
+function resizeCC(){cc.width=window.innerWidth;cc.height=window.innerHeight}
+window.addEventListener('resize',()=>{resizeCC();resize();});
+resizeCC();
+
+function mkPart(){
+  return{
+    x:Math.random()*cc.width,
+    y:Math.random()*cc.height*.25-cc.height*.05,
+    vx:(Math.random()-.5)*7,
+    vy:Math.random()*4+2,
+    size:Math.random()*10+5,
+    color:CCOLORS[Math.floor(Math.random()*CCOLORS.length)],
+    angle:Math.random()*360,
+    spin:(Math.random()-.5)*9,
+    alpha:1,
+    decay:Math.random()*.008+.005,
+    shape:Math.random()>.5?'rect':'circle',
+  };
+}
+
+function launchConfetti(){
+  crunning=true; cparts=[];
+  for(let i=0;i<200;i++) cparts.push(mkPart());
+  if(craf) cancelAnimationFrame(craf);
+  animCC();
+  setTimeout(()=>{if(crunning) for(let i=0;i<150;i++) cparts.push(mkPart());},700);
+}
+
+function stopConfetti(){
+  crunning=false;
+  if(craf) cancelAnimationFrame(craf);
+  cctx.clearRect(0,0,cc.width,cc.height);
+  cparts=[];
+}
+
+function animCC(){
+  cctx.clearRect(0,0,cc.width,cc.height);
+  cparts.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy; p.vy+=.12; p.angle+=p.spin; p.alpha-=p.decay;
+    if(p.alpha<=0) return;
+    cctx.save();
+    cctx.globalAlpha=Math.max(0,p.alpha);
+    cctx.translate(p.x,p.y);
+    cctx.rotate(p.angle*Math.PI/180);
+    cctx.fillStyle=p.color;
+    if(p.shape==='rect') cctx.fillRect(-p.size/2,-p.size/4,p.size,p.size/2);
+    else{cctx.beginPath();cctx.arc(0,0,p.size/2,0,Math.PI*2);cctx.fill();}
+    cctx.restore();
+  });
+  cparts=cparts.filter(p=>p.alpha>0);
+  if(cparts.length>0&&crunning) craf=requestAnimationFrame(animCC);
+  else cctx.clearRect(0,0,cc.width,cc.height);
+}
+
+/* =============================================
+   초기화 실행
+============================================= */
+window.addEventListener('load',()=>{
+  resize();
+  initBalls();
+  lastTime=performance.now();
+  rafId=requestAnimationFrame(loop);
+});
+</script>
+</body>
+</html>
